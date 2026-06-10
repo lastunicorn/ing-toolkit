@@ -30,7 +30,7 @@ jobs:
             10.0.x
 
       - name: Restore (nuget.org only)
-        run: dotnet restore ./sources/Ing.Toolkit.slnx --configfile ./nuget.config
+        run: dotnet restore ./Ing.Toolkit.slnx --configfile ./nuget.config
 
       - name: Resolve package version
         id: version
@@ -67,7 +67,7 @@ jobs:
 
       - name: Build
         run: |
-          dotnet build ./sources/Ing.Toolkit.slnx -c Release --no-restore \
+          dotnet build ./Ing.Toolkit.slnx -c Release --no-restore \
             -p:Version="${{ steps.version.outputs.package_version }}" \
             -p:PackageVersion="${{ steps.version.outputs.package_version }}" \
             -p:AssemblyVersion="${{ steps.version.outputs.package_version }}" \
