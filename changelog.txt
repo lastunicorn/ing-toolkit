@@ -3,3 +3,4 @@ ING Toolkit
 
 v1.0.0
 --------------------------------------------------------------------------------
+[new   ] Created StatementDocument to parse csv statement files from ING.  
