@@ -9,7 +9,17 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="ConsoleTools.Controls.Tables" Version="1.2.1" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\Ing.Toolkit\Ing.Toolkit.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="statement.csv">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 </Project>
