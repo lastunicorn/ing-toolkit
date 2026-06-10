@@ -1,0 +1,145 @@
+name: Publish NuGet package
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: "Stable package version (required for manual runs)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish-nuget:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore (nuget.org only)
+        run: dotnet restore ./sources/Ing.Toolkit.slnx --configfile ./nuget.config
+
+      - name: Resolve package version
+        id: version
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PACKAGE_VERSION: ${{ github.event.inputs.package_version }}
+        run: |
+          stable_tag_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+          stable_version_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            if ! [[ "$REF_NAME" =~ $stable_tag_pattern ]]; then
+              echo "Expected strict stable tag format vMAJOR.MINOR.PATCH, got '$REF_NAME'."
+              exit 1
+            fi
+            version="${REF_NAME#v}"
+          else
+            version="$INPUT_PACKAGE_VERSION"
+          fi
+
+          if [ -z "$version" ]; then
+            echo "No package version resolved. Use a vMAJOR.MINOR.PATCH tag or set workflow input 'package_version'."
+            exit 1
+          fi
+
+          if ! [[ "$version" =~ $stable_version_pattern ]]; then
+            echo "Invalid version '$version'. Only stable MAJOR.MINOR.PATCH is allowed."
+            exit 1
+          fi
+
+          echo "package_version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: |
+          dotnet build ./sources/Ing.Toolkit.slnx -c Release --no-restore \
+            -p:Version="${{ steps.version.outputs.package_version }}" \
+            -p:PackageVersion="${{ steps.version.outputs.package_version }}" \
+            -p:AssemblyVersion="${{ steps.version.outputs.package_version }}" \
+            -p:FileVersion="${{ steps.version.outputs.package_version }}" \
+            -p:InformationalVersion="${{ steps.version.outputs.package_version }}" \
+            -p:IncludeSourceRevisionInInformationalVersion=false
+
+      - name: Pack
+        run: |
+          dotnet pack ./sources/Ing.Toolkit/Ing.Toolkit.csproj \
+            -c Release \
+            --no-build \
+            -o ./artifacts \
+            -p:Version="${{ steps.version.outputs.package_version }}" \
+            -p:PackageVersion="${{ steps.version.outputs.package_version }}" \
+            -p:AssemblyVersion="${{ steps.version.outputs.package_version }}" \
+            -p:FileVersion="${{ steps.version.outputs.package_version }}" \
+            -p:InformationalVersion="${{ steps.version.outputs.package_version }}" \
+            -p:IncludeSourceRevisionInInformationalVersion=false
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: ./artifacts/*.nupkg
+
+      - name: Validate packed version
+        shell: bash
+        run: |
+          expected_version="${{ steps.version.outputs.package_version }}"
+          ls ./artifacts/*.nupkg | grep -E "\.${expected_version//./\\.}\.nupkg$" >/dev/null
+
+      - name: Validate NuGet API key
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "Missing repository secret NUGET_API_KEY."
+            exit 1
+          fi
+          echo "API key length: ${#NUGET_API_KEY} chars"
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -X POST \
+            -H "X-NuGet-ApiKey: $NUGET_API_KEY" \
+            -H "Content-Length: 0" \
+            "https://www.nuget.org/api/v2/package/create-verification-key/DustInTheWind.Ing.Toolkit")
+          http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
+          body=$(echo "$response" | grep -v "HTTP_STATUS:")
+          echo "NuGet API key verification status: $http_status"
+          echo "Response body: $body"
+          if [ "$http_status" = "200" ]; then
+            echo "API key is valid."
+          elif [ "$http_status" = "401" ]; then
+            echo "API key is invalid or expired. Please regenerate it on nuget.org and update the NUGET_API_KEY secret."
+            exit 1
+          elif [ "$http_status" = "403" ]; then
+            echo "API key does not have permission to push 'DustInTheWind.Ing.Toolkit'. Check the key's scope on nuget.org."
+            exit 1
+          else
+            echo "Unexpected verification response: $http_status. Aborting."
+            exit 1
+          fi
+
+      - name: Push to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          output=$(dotnet nuget push "./artifacts/*.nupkg" \
+            --api-key "$NUGET_API_KEY" \
+            --source "https://api.nuget.org/v3/index.json" \
+            --skip-duplicate 2>&1) || true
+          echo "$output"
+          if echo "$output" | grep -qiE "error|failed" && ! echo "$output" | grep -qi "already exists"; then
+            exit 1
+          fi
