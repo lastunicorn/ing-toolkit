@@ -14,169 +14,170 @@ namespace DustInTheWind.Ing.Toolkit.Csv;
 /// </remarks>
 internal class CsvStatementDocument : IDisposable
 {
-    private static readonly CultureInfo CultureInfo = new("ro-RO");
+	private static readonly CultureInfo CultureInfo = new("ro-RO");
 
-    private readonly CsvReader csvReader;
-    private IReadOnlyList<CsvTransactionsHeaderCell> headerCells;
-    private readonly List<string> warnings = [];
+	private readonly CsvReader csvReader;
+	private IReadOnlyList<CsvTransactionsHeaderCell> headerCells;
+	private readonly List<string> warnings = [];
 
-    public  CsvDocumentReadState State { get; private set; }
+	public CsvDocumentReadState State { get; private set; }
 
-    public IReadOnlyList<string> Warnings => warnings;
+	public IReadOnlyList<string> Warnings => warnings;
 
-    public CsvStatementDocument(TextReader textReader)
-    {
-        if (textReader == null) throw new ArgumentNullException(nameof(textReader));
+	public CsvStatementDocument(TextReader textReader)
+	{
+		if (textReader == null) throw new ArgumentNullException(nameof(textReader));
 
-        CsvConfiguration csvConfiguration = new(CultureInfo.InvariantCulture)
-        {
-            HasHeaderRecord = false,
-            IgnoreBlankLines = true
-        };
+		CsvConfiguration csvConfiguration = new(CultureInfo.InvariantCulture)
+		{
+			HasHeaderRecord = false,
+			IgnoreBlankLines = true,
+			ShouldSkipRecord = args => args.Row.Parser.Record?.All(string.IsNullOrEmpty) ?? true
+		};
 
-        csvReader = new CsvReader(textReader, csvConfiguration);
-    }
+		csvReader = new CsvReader(textReader, csvConfiguration);
+	}
 
-    public async Task OpenAsync()
-    {
-        if (State != CsvDocumentReadState.New)
-            throw new InvalidReadStateException(State, CsvDocumentReadState.New);
+	public async Task OpenAsync()
+	{
+		if (State != CsvDocumentReadState.New)
+			throw new InvalidReadStateException(State, CsvDocumentReadState.New);
 
-        if (!await csvReader.ReadAsync())
-            throw new DocumentLoadException("CSV file has no data.");
+		if (!await csvReader.ReadAsync())
+			throw new DocumentLoadException("CSV file has no data.");
 
-        State = CsvDocumentReadState.PageHeader;
-    }
+		State = CsvDocumentReadState.PageHeader;
+	}
 
-    public async Task<CsvPageHeader> ReadPageHeaderAsync()
-    {
-        if (State != CsvDocumentReadState.PageHeader)
-            throw new InvalidReadStateException(State, CsvDocumentReadState.PageHeader);
+	public async Task<CsvPageHeader> ReadPageHeaderAsync()
+	{
+		if (State != CsvDocumentReadState.PageHeader)
+			throw new InvalidReadStateException(State, CsvDocumentReadState.PageHeader);
 
-        try
-        {
-            CsvPageHeader header = await CsvPageHeader.CreateAsync(csvReader);
-            State = CsvDocumentReadState.TransactionsHeader;
-            return header;
-        }
-        catch (DocumentLoadException)
-        {
-            State = CsvDocumentReadState.Ended;
-            throw;
-        }
-        catch (Exception ex)
-        {
-            State = CsvDocumentReadState.Ended;
-            throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
-        }
-    }
+		try
+		{
+			CsvPageHeader header = await CsvPageHeader.CreateAsync(csvReader, warnings);
+			State = CsvDocumentReadState.TransactionsHeader;
+			return header;
+		}
+		catch (DocumentLoadException)
+		{
+			State = CsvDocumentReadState.Ended;
+			throw;
+		}
+		catch (Exception ex)
+		{
+			State = CsvDocumentReadState.Ended;
+			throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
+		}
+	}
 
-    public async Task<CsvTransactionsHeader> ReadTransactionsHeaderAsync()
-    {
-        if (State != CsvDocumentReadState.TransactionsHeader)
-            throw new InvalidReadStateException(State, CsvDocumentReadState.TransactionsHeader);
+	public async Task<CsvTransactionsHeader> ReadTransactionsHeaderAsync()
+	{
+		if (State != CsvDocumentReadState.TransactionsHeader)
+			throw new InvalidReadStateException(State, CsvDocumentReadState.TransactionsHeader);
 
-        try
-        {
-            CsvTransactionsHeader csvTransactionsHeader = await CsvTransactionsHeader.Create(csvReader, warnings);
-            headerCells = csvTransactionsHeader.Cells;
+		try
+		{
+			CsvTransactionsHeader csvTransactionsHeader = await CsvTransactionsHeader.Create(csvReader, warnings);
+			headerCells = csvTransactionsHeader.Cells;
 
-            State = CsvDocumentReadState.Transaction;
-            return csvTransactionsHeader;
-        }
-        catch (DocumentLoadException)
-        {
-            State = CsvDocumentReadState.Ended;
-            throw;
-        }
-        catch (Exception ex)
-        {
-            State = CsvDocumentReadState.Ended;
-            throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
-        }
-    }
+			State = CsvDocumentReadState.Transaction;
+			return csvTransactionsHeader;
+		}
+		catch (DocumentLoadException)
+		{
+			State = CsvDocumentReadState.Ended;
+			throw;
+		}
+		catch (Exception ex)
+		{
+			State = CsvDocumentReadState.Ended;
+			throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
+		}
+	}
 
-    public async IAsyncEnumerable<BankTransaction> ReadTransactionsAsync()
-    {
-        if (State != CsvDocumentReadState.Transaction)
-            throw new InvalidReadStateException(State, CsvDocumentReadState.Transaction);
+	public async IAsyncEnumerable<BankTransaction> ReadTransactionsAsync()
+	{
+		if (State != CsvDocumentReadState.Transaction)
+			throw new InvalidReadStateException(State, CsvDocumentReadState.Transaction);
 
-        await using TransactionAsyncEnumerator enumerator = new(csvReader, headerCells, CultureInfo);
+		await using TransactionAsyncEnumerator enumerator = new(csvReader, headerCells, CultureInfo);
 
-        while (await enumerator.MoveNextAsync())
-            yield return enumerator.Current;
+		while (await enumerator.MoveNextAsync())
+			yield return enumerator.Current;
 
-        if (csvReader.Parser.Record != null)
-        {
-            string firstCell = csvReader.Parser.Record[0];
-            bool isFirstCellEmpty = string.IsNullOrEmpty(firstCell);
+		if (csvReader.Parser.Record != null)
+		{
+			string firstCell = csvReader.Parser.Record[0];
+			bool isFirstCellEmpty = string.IsNullOrEmpty(firstCell);
 
-            State = isFirstCellEmpty
-                ? CsvDocumentReadState.PageSignatures
-                : CsvDocumentReadState.AccountBalance;
-        }
-        else
-        {
-            State = CsvDocumentReadState.Ended;
-        }
-    }
+			State = isFirstCellEmpty
+				? CsvDocumentReadState.PageSignatures
+				: CsvDocumentReadState.AccountBalance;
+		}
+		else
+		{
+			State = CsvDocumentReadState.Ended;
+		}
+	}
 
-    public async Task<CsvAccountBalance> ReadAccountBalanceAsync()
-    {
-        if (State != CsvDocumentReadState.AccountBalance)
-            throw new InvalidReadStateException(State, CsvDocumentReadState.AccountBalance);
+	public async Task<CsvAccountBalance> ReadAccountBalanceAsync()
+	{
+		if (State != CsvDocumentReadState.AccountBalance)
+			throw new InvalidReadStateException(State, CsvDocumentReadState.AccountBalance);
 
-        try
-        {
-            CsvAccountBalance accountBalance = await CsvAccountBalance.CreateAsync(csvReader, CultureInfo, warnings);
+		try
+		{
+			CsvAccountBalance accountBalance = await CsvAccountBalance.CreateAsync(csvReader, CultureInfo, warnings);
 
-            State = csvReader.Parser.Record == null
-                ? CsvDocumentReadState.Ended
-                : CsvDocumentReadState.PageSignatures;
+			State = csvReader.Parser.Record == null
+				? CsvDocumentReadState.Ended
+				: CsvDocumentReadState.PageSignatures;
 
-            return accountBalance;
-        }
-        catch (DocumentLoadException)
-        {
-            State = CsvDocumentReadState.Ended;
-            throw;
-        }
-        catch (Exception ex)
-        {
-            State = CsvDocumentReadState.Ended;
-            throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
-        }
-    }
+			return accountBalance;
+		}
+		catch (DocumentLoadException)
+		{
+			State = CsvDocumentReadState.Ended;
+			throw;
+		}
+		catch (Exception ex)
+		{
+			State = CsvDocumentReadState.Ended;
+			throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
+		}
+	}
 
-    public async Task<CsvPageSignatures> ReadPageSignaturesAsync()
-    {
-        if (State != CsvDocumentReadState.PageSignatures)
-            throw new InvalidReadStateException(State, CsvDocumentReadState.PageSignatures);
+	public async Task<CsvPageSignatures> ReadPageSignaturesAsync()
+	{
+		if (State != CsvDocumentReadState.PageSignatures)
+			throw new InvalidReadStateException(State, CsvDocumentReadState.PageSignatures);
 
-        try
-        {
-            CsvPageSignatures footer = await CsvPageSignatures.CreateAsync(csvReader);
+		try
+		{
+			CsvPageSignatures footer = await CsvPageSignatures.CreateAsync(csvReader);
 
-            State = csvReader.Parser.Record == null
-                ? CsvDocumentReadState.Ended
-                : CsvDocumentReadState.PageHeader;
+			State = csvReader.Parser.Record == null
+				? CsvDocumentReadState.Ended
+				: CsvDocumentReadState.PageHeader;
 
-            return footer;
-        }
-        catch (DocumentLoadException)
-        {
-            State = CsvDocumentReadState.Ended;
-            throw;
-        }
-        catch (Exception ex)
-        {
-            State = CsvDocumentReadState.Ended;
-            throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
-        }
-    }
+			return footer;
+		}
+		catch (DocumentLoadException)
+		{
+			State = CsvDocumentReadState.Ended;
+			throw;
+		}
+		catch (Exception ex)
+		{
+			State = CsvDocumentReadState.Ended;
+			throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
+		}
+	}
 
-    public void Dispose()
-    {
-        csvReader?.Dispose();
-    }
+	public void Dispose()
+	{
+		csvReader?.Dispose();
+	}
 }

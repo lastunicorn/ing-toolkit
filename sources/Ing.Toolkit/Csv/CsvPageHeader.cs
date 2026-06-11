@@ -10,19 +10,22 @@ internal class CsvPageHeader
 
 	public string Address { get; set; }
 
-	public static async Task<CsvPageHeader> CreateAsync(CsvReader csvReader)
+	public static async Task<CsvPageHeader> CreateAsync(CsvReader csvReader, List<string> warnings)
 	{
-		string accountOwner = GetAccountOwner(csvReader.Parser.Record);
+		if (csvReader == null) throw new ArgumentNullException(nameof(csvReader));
+		if (warnings == null) throw new ArgumentNullException(nameof(warnings));
+
+		string accountOwner = GetAccountOwner(csvReader.Parser.Record, warnings);
 
 		if (!await csvReader.ReadAsync())
-			throw new DocumentLoadException("CSV file ended before line 2 (CNP).");
+			throw new DocumentLoadException("CSV file ended. CNP row not found.");
 
-		string ownerCnp = GetOwnerCnp(csvReader.Parser.Record);
+		string ownerCnp = GetOwnerCnp(csvReader.Parser.Record, warnings);
 
 		if (!await csvReader.ReadAsync())
-			throw new DocumentLoadException("CSV file ended before line 3 (Address).");
+			throw new DocumentLoadException("CSV file ended. Address row not found.");
 
-		string ownerAddress = GetOwnerAddress(csvReader.Parser.Record);
+		string ownerAddress = GetOwnerAddress(csvReader.Parser.Record, warnings);
 
 		CsvPageHeader csvPageHeader = new()
 		{
@@ -36,30 +39,52 @@ internal class CsvPageHeader
 		return csvPageHeader;
 	}
 
-	private static string GetAccountOwner(string[] row)
+	private static string GetAccountOwner(string[] row, List<string> warnings)
 	{
-		const string Key = "Titular cont: ";
+		const string key = "Titular cont: ";
 
-		if (row.Length == 0 || !row[0].StartsWith(Key, StringComparison.OrdinalIgnoreCase))
-			throw new DocumentLoadException($"CSV owner name row must respect pattern: '{Key}<name>'");
+		if (row.Length == 0)
+		{
+			warnings.Add("Owner name row missing.");
+			return string.Empty;
+		}
+		
+		string firstCell = row[0];
 
-		return row[0].Substring(Key.Length);
+		if (!row[0].StartsWith(key, StringComparison.OrdinalIgnoreCase))
+		{
+			warnings.Add($"Owner name row must respect pattern: '{key}<name>'");
+			return firstCell;
+		}
+
+		return firstCell.Substring(key.Length);
 	}
 
-	private static string GetOwnerCnp(string[] row)
+	private static string GetOwnerCnp(string[] row, List<string> warnings)
 	{
-		const string Key = "CNP: ";
+		const string key = "CNP: ";
 
-		if (row.Length == 0 || !row[0].StartsWith(Key, StringComparison.OrdinalIgnoreCase))
-			throw new DocumentLoadException($"CSV CNP row must respect pattern: '{Key}<name>'");
+		if (row.Length == 0)
+		{
+			warnings.Add("CNP row missing.");
+			return string.Empty;
+		}
+		
+		string firstCell = row[0];
 
-		return row[0].Substring(Key.Length);
+		if (!row[0].StartsWith(key, StringComparison.OrdinalIgnoreCase))
+		{
+			warnings.Add($"CNP row must respect pattern: '{key}<name>'");
+			return firstCell;
+		}
+
+		return firstCell.Substring(key.Length);
 	}
 
-	private static string GetOwnerAddress(string[] row)
+	private static string GetOwnerAddress(string[] row, List<string> warnings)
 	{
 		if (row.Length == 0)
-			throw new DocumentLoadException("CSV address row must contain at least one cell.");
+			warnings.Add("Address row missing.");
 
 		return row[0]
 			.Replace("\r", " ")
