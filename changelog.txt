@@ -6,6 +6,7 @@ v1.1.0 (breacking change)
 --------------------------------------------------------------------------------
 [change] The document load functons return a result object containing the document and warnings.
 [new   ] The load functions accept a CultureInfo instance to be used for deserializing data.
+[change] Improved parsing algorithm to be more robust and handle more edge cases.
 
 
 v1.0.0
