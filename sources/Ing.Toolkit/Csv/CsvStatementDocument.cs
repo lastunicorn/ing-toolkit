@@ -4,8 +4,18 @@ using CsvHelper.Configuration;
 
 namespace DustInTheWind.Ing.Toolkit.Csv;
 
+/// <summary>
+/// Represents a CSV document containing bank transactions.
+/// </summary>
+/// <remarks>
+/// The document is read sequentially, starting with the page header, followed by the transactions' header,
+/// then the transactions, and finally the account balance and page signatures if they exist.
+/// The document can be in one of several states during reading, and methods will throw exceptions if called in an invalid state.
+/// </remarks>
 internal class CsvStatementDocument : IDisposable
 {
+    private static readonly CultureInfo CultureInfo = new("ro-RO");
+
     private readonly CsvReader csvReader;
     private IReadOnlyList<CsvTransactionsHeaderCell> headerCells;
 
@@ -88,7 +98,7 @@ internal class CsvStatementDocument : IDisposable
         if (State != CsvDocumentReadState.Transaction)
             throw new InvalidReadStateException(State, CsvDocumentReadState.Transaction);
 
-        await using IAsyncEnumerator<BankTransaction> enumerator = new TransactionAsyncEnumerator(csvReader, headerCells);
+        await using IAsyncEnumerator<BankTransaction> enumerator = new TransactionAsyncEnumerator(csvReader, headerCells, CultureInfo);
 
         while (await enumerator.MoveNextAsync())
             yield return enumerator.Current;
@@ -101,7 +111,7 @@ internal class CsvStatementDocument : IDisposable
             if (isFirstCellEmpty)
                 State = CsvDocumentReadState.PageSignatures;
             else
-                State = CsvDocumentReadState.DocumentTotals;
+                State = CsvDocumentReadState.AccountBalance;
         }
         else
         {
@@ -109,20 +119,20 @@ internal class CsvStatementDocument : IDisposable
         }
     }
 
-    public async Task<CsvDocumentTotals> ReadDocumentTotalsAsync()
+    public async Task<CsvAccountBalance> ReadAccountBalanceAsync()
     {
-        if (State != CsvDocumentReadState.DocumentTotals)
-            throw new InvalidReadStateException(State, CsvDocumentReadState.DocumentTotals);
+        if (State != CsvDocumentReadState.AccountBalance)
+            throw new InvalidReadStateException(State, CsvDocumentReadState.AccountBalance);
 
         try
         {
-            CsvDocumentTotals totals = await CsvDocumentTotals.CreateAsync(csvReader);
+            CsvAccountBalance accountBalance = await CsvAccountBalance.CreateAsync(csvReader, CultureInfo);
 
             State = csvReader.Parser.Record == null
                 ? CsvDocumentReadState.Ended
                 : CsvDocumentReadState.PageSignatures;
 
-            return totals;
+            return accountBalance;
         }
         catch (DocumentLoadException)
         {

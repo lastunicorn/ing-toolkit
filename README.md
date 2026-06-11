@@ -35,7 +35,7 @@ dotnet add package DustInTheWind.Ing.Toolkit
 
 - In the "Portofoliu" tab, make sure the current account box is expanded.
 - Click the three dots "Mai multe" and select "Extras de cont" (Statement)
-- Choose the month and export the statement as CSV.
+- Choose the month and export the ~~~~statement as CSV.
 
 ### Step 2 - Parse the Exported Document
 
@@ -59,7 +59,7 @@ foreach (BankTransaction transaction in document)
 - The document is organized in multiple pages. Each page corresponds to a printable page in the original exported file.
 - Each page begins with a page header that contains identifying information for the account holder: the full name, the CNP (personal numeric code) and the address.
 - Each page ends with a small signature section (a printed area reserved for signatures).
-- The final page contains additional summary information: opening balance, closing balance, totals and other aggregated values for the entire statement.
+- The final page contains additional summary information: opening balance, closing balance and other aggregated values for the entire statement.~~~~
 
 ### CSV Inconsistencies 
 

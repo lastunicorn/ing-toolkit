@@ -6,7 +6,7 @@ internal enum CsvDocumentReadState
     PageHeader,
     TransactionsHeader,
     Transaction,
-    DocumentTotals,
+    AccountBalance,
     PageSignatures,
     Ended
 }

@@ -34,7 +34,12 @@ internal static class Program
         {
             Title = "Transactions",
             DisplayBorderBetweenRows = true,
-            Footer = $"Count: {document.Count}"
+            Footer = new[]
+            {
+                $"Count: {document.Count}",
+                $"Initial Balance: {document.InitialBalance}",
+                $"Final Balance: {document.FinalBalance}"
+            }
         };
 
         dataGrid.Columns.Add("Date");

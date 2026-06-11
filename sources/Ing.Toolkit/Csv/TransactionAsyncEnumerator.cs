@@ -1,4 +1,5 @@
-﻿using CsvHelper;
+﻿using System.Globalization;
+using CsvHelper;
 
 namespace DustInTheWind.Ing.Toolkit.Csv;
 
@@ -6,20 +7,20 @@ internal sealed class TransactionAsyncEnumerator : IAsyncEnumerator<BankTransact
 {
     private readonly CsvReader csvReader;
     private readonly IReadOnlyList<CsvTransactionsHeaderCell> headerCells;
+    private readonly CultureInfo cultureInfo;
     private readonly List<int> optionalHeaderCellIndexes = [];
 
-    public TransactionAsyncEnumerator(CsvReader csvReader, IReadOnlyList<CsvTransactionsHeaderCell> headerCells)
+    public TransactionAsyncEnumerator(CsvReader csvReader, IReadOnlyList<CsvTransactionsHeaderCell> headerCells, CultureInfo cultureInfo)
     {
-        if (csvReader == null) throw new ArgumentNullException(nameof(csvReader));
-
-        this.csvReader = csvReader;
-        this.headerCells = headerCells;
+        this.csvReader = csvReader ?? throw new ArgumentNullException(nameof(csvReader));
+        this.headerCells = headerCells ?? throw new ArgumentNullException(nameof(headerCells));
+        this.cultureInfo = cultureInfo ?? throw new ArgumentNullException(nameof(cultureInfo));
 
         if (headerCells.Count >= 1)
-            optionalHeaderCellIndexes.Add(headerCells[headerCells.Count - 1].Index);
+            optionalHeaderCellIndexes.Add(headerCells[^1].Index);
 
         if (headerCells.Count >= 2)
-            optionalHeaderCellIndexes.Add(headerCells[headerCells.Count - 2].Index);
+            optionalHeaderCellIndexes.Add(headerCells[^2].Index);
     }
 
     public BankTransaction Current { get; private set; }
@@ -31,7 +32,7 @@ internal sealed class TransactionAsyncEnumerator : IAsyncEnumerator<BankTransact
         if (!isValidRecord)
             return false;
 
-        CsvTransactionRecord csvTransactionRecord = await CsvTransactionRecord.CreateAsync(csvReader, headerCells);
+        CsvTransactionRecord csvTransactionRecord = await CsvTransactionRecord.CreateAsync(csvReader, headerCells, cultureInfo);
 
         Current = new BankTransaction
         {

@@ -9,8 +9,6 @@ namespace DustInTheWind.Ing.Toolkit.Csv;
 /// </summary>
 internal class CsvTransactionRecord
 {
-    private static readonly CultureInfo CultureInfo = new("ro-RO");
-
     public DateOnly Date { get; private set; }
 
     public List<string> Details { get; private set; } = [];
@@ -19,7 +17,7 @@ internal class CsvTransactionRecord
 
     public decimal? CreditAmount { get; private set; }
 
-    public static async Task<CsvTransactionRecord> CreateAsync(CsvReader csvReader, IReadOnlyList<CsvTransactionsHeaderCell> headerCells)
+    public static async Task<CsvTransactionRecord> CreateAsync(CsvReader csvReader, IReadOnlyList<CsvTransactionsHeaderCell> headerCells, CultureInfo cultureInfo)
     {
         try
         {
@@ -27,9 +25,9 @@ internal class CsvTransactionRecord
 
             CsvTransactionRecord csvTransactionRecord = new()
             {
-                Date = csvReader.GetField<DateOnly>(headerCells[0].Index - 1, new DateTypeConverter(CultureInfo)),
-                DebitAmount = csvReader.GetField<decimal?>(headerCells[2].Index - 1, new DecimalTypeConverter(CultureInfo)),
-                CreditAmount = csvReader.GetField<decimal?>(headerCells[3].Index - 1, new DecimalTypeConverter(CultureInfo))
+                Date = csvReader.GetField<DateOnly>(headerCells[0].Index - 1, new DateTypeConverter(cultureInfo)),
+                DebitAmount = csvReader.GetField<decimal?>(headerCells[2].Index - 1, new DecimalTypeConverter(cultureInfo)),
+                CreditAmount = csvReader.GetField<decimal?>(headerCells[3].Index - 1, new DecimalTypeConverter(cultureInfo))
             };
 
             csvTransactionRecord.Details.Add(csvReader.GetField<string>(headerCells[1].Index - 1));

@@ -11,6 +11,10 @@ public class StatementDocument : Collection<BankTransaction>
 
     public string Address { get; set; }
 
+    public decimal InitialBalance { get; set; }
+
+    public decimal FinalBalance { get; set; }
+
     public static async Task<StatementDocument> LoadFromFileAsync(string filePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
@@ -132,8 +136,10 @@ public class StatementDocument : Collection<BankTransaction>
                             statementDocument.Add(bankTransaction);
                         break;
 
-                    case CsvDocumentReadState.DocumentTotals:
-                        _ = await csvStatementDocument.ReadDocumentTotalsAsync();
+                    case CsvDocumentReadState.AccountBalance:
+                        CsvAccountBalance csvAccountBalance = await csvStatementDocument.ReadAccountBalanceAsync();
+                        statementDocument.InitialBalance = csvAccountBalance.InitialBalance;
+                        statementDocument.FinalBalance = csvAccountBalance.FinalBalance;
                         break;
 
                     case CsvDocumentReadState.PageSignatures:
