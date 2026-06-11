@@ -21,7 +21,7 @@ internal sealed class DateTypeConverter : DefaultTypeConverter
 
 		try
 		{
-			return DateOnly.ParseExact(text, "dd MMM yyyy", cultureInfo);
+			return DateOnly.ParseExact(text, "dd MMMM yyyy", cultureInfo);
 		}
 		catch (ArgumentException ex)
 		{
@@ -32,7 +32,7 @@ internal sealed class DateTypeConverter : DefaultTypeConverter
 	public override string ConvertToString(object value, IWriterRow row, MemberMapData memberMapData)
 	{
 		return value is DateOnly dateOnly
-			? dateOnly.ToString("dd MMM yyyy", cultureInfo)
+			? dateOnly.ToString("dd MMMM yyyy", cultureInfo)
 			: base.ConvertToString(value, row, memberMapData);
 	}
 }
