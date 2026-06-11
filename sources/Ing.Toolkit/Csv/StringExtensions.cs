@@ -2,11 +2,11 @@
 
 internal static class StringExtensions
 {
-    public static bool IsAllEmpty(this IEnumerable<string> collection)
-    {
-        if (collection == null)
-            return true;
+	public static bool IsAllEmpty(this IEnumerable<string> collection)
+	{
+		if (collection == null)
+			return true;
 
-        return collection.All(x => string.IsNullOrEmpty(x));
-    }
+		return collection.All(x => string.IsNullOrEmpty(x));
+	}
 }

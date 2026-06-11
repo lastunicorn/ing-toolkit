@@ -2,11 +2,11 @@
 
 internal enum CsvDocumentReadState
 {
-    New = 0,
-    PageHeader,
-    TransactionsHeader,
-    Transaction,
-    AccountBalance,
-    PageSignatures,
-    Ended
+	New = 0,
+	PageHeader,
+	TransactionsHeader,
+	Transaction,
+	AccountBalance,
+	PageSignatures,
+	Ended
 }

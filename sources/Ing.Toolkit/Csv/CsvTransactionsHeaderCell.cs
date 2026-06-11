@@ -2,12 +2,12 @@
 
 internal class CsvTransactionsHeaderCell
 {
-    public int Index { get; set; }
- 
-    public string Title { get; set; }
+	public int Index { get; set; }
 
-    public override string ToString()
-    {
-        return $"{Index}: {Title}";
-    }
+	public string Title { get; set; }
+
+	public override string ToString()
+	{
+		return $"{Index}: {Title}";
+	}
 }

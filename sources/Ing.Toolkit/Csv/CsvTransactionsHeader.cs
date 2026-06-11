@@ -4,7 +4,7 @@ namespace DustInTheWind.Ing.Toolkit.Csv;
 
 internal class CsvTransactionsHeader
 {
-	private List<CsvTransactionsHeaderCell> cells = [];
+	private readonly List<CsvTransactionsHeaderCell> cells = [];
 
 	public IReadOnlyList<CsvTransactionsHeaderCell> Cells => cells;
 

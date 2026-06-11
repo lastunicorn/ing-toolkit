@@ -2,8 +2,8 @@
 
 public class DataHeaderMissingException : DocumentLoadException
 {
-    public DataHeaderMissingException()
-        : base("CSV transactions header line is missing.")
-    {
-    }
+	public DataHeaderMissingException()
+		: base("CSV transactions header line is missing.")
+	{
+	}
 }
