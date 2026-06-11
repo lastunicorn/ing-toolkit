@@ -18,8 +18,11 @@ internal class CsvStatementDocument : IDisposable
 
     private readonly CsvReader csvReader;
     private IReadOnlyList<CsvTransactionsHeaderCell> headerCells;
+    private readonly List<string> warnings = [];
 
-    internal CsvDocumentReadState State { get; private set; }
+    public  CsvDocumentReadState State { get; private set; }
+
+    public IReadOnlyList<string> Warnings => warnings;
 
     public CsvStatementDocument(TextReader textReader)
     {
@@ -31,7 +34,7 @@ internal class CsvStatementDocument : IDisposable
             IgnoreBlankLines = true
         };
 
-        csvReader = new(textReader, csvConfiguration);
+        csvReader = new CsvReader(textReader, csvConfiguration);
     }
 
     public async Task OpenAsync()
@@ -98,7 +101,7 @@ internal class CsvStatementDocument : IDisposable
         if (State != CsvDocumentReadState.Transaction)
             throw new InvalidReadStateException(State, CsvDocumentReadState.Transaction);
 
-        await using IAsyncEnumerator<BankTransaction> enumerator = new TransactionAsyncEnumerator(csvReader, headerCells, CultureInfo);
+        await using TransactionAsyncEnumerator enumerator = new(csvReader, headerCells, CultureInfo);
 
         while (await enumerator.MoveNextAsync())
             yield return enumerator.Current;
@@ -108,10 +111,9 @@ internal class CsvStatementDocument : IDisposable
             string firstCell = csvReader.Parser.Record[0];
             bool isFirstCellEmpty = string.IsNullOrEmpty(firstCell);
 
-            if (isFirstCellEmpty)
-                State = CsvDocumentReadState.PageSignatures;
-            else
-                State = CsvDocumentReadState.AccountBalance;
+            State = isFirstCellEmpty
+                ? CsvDocumentReadState.PageSignatures
+                : CsvDocumentReadState.AccountBalance;
         }
         else
         {
@@ -126,7 +128,7 @@ internal class CsvStatementDocument : IDisposable
 
         try
         {
-            CsvAccountBalance accountBalance = await CsvAccountBalance.CreateAsync(csvReader, CultureInfo);
+            CsvAccountBalance accountBalance = await CsvAccountBalance.CreateAsync(csvReader, CultureInfo, warnings);
 
             State = csvReader.Parser.Record == null
                 ? CsvDocumentReadState.Ended
