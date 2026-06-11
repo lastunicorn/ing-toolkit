@@ -78,7 +78,7 @@ internal class CsvStatementDocument : IDisposable
 
         try
         {
-            CsvTransactionsHeader csvTransactionsHeader = await CsvTransactionsHeader.Create(csvReader);
+            CsvTransactionsHeader csvTransactionsHeader = await CsvTransactionsHeader.Create(csvReader, warnings);
             headerCells = csvTransactionsHeader.Cells;
 
             State = CsvDocumentReadState.Transaction;

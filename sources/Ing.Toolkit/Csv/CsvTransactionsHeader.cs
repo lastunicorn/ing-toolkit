@@ -4,31 +4,37 @@ namespace DustInTheWind.Ing.Toolkit.Csv;
 
 internal class CsvTransactionsHeader
 {
-    private List<CsvTransactionsHeaderCell> cells = [];
+	private List<CsvTransactionsHeaderCell> cells = [];
 
-    public IReadOnlyList<CsvTransactionsHeaderCell> Cells => cells;
+	public IReadOnlyList<CsvTransactionsHeaderCell> Cells => cells;
 
-    public static async Task<CsvTransactionsHeader> Create(CsvReader csvReader)
-    {
-        string[] values = csvReader.Parser.Record;
+	public static async Task<CsvTransactionsHeader> Create(CsvReader csvReader, List<string> warnings)
+	{
+		if (csvReader == null) throw new ArgumentNullException(nameof(csvReader));
+		if (warnings == null) throw new ArgumentNullException(nameof(warnings));
 
-        if (values.Length != 10)
-            throw new DocumentLoadException($"CSV header line has {values.Length} columns, but 10 were expected.");
+		string[] values = csvReader.Parser.Record;
 
-        CsvTransactionsHeader csvTransactionsHeader = new();
+		if (values == null)
+			throw new DocumentLoadException("CSV header line is missing.");
 
-        IEnumerable<CsvTransactionsHeaderCell> cells = values
-             .Select((x, i) => new CsvTransactionsHeaderCell
-             {
-                 Index = i,
-                 Title = x
-             })
-             .Where(x => !string.IsNullOrEmpty(x.Title));
+		CsvTransactionsHeader csvTransactionsHeader = new();
 
-        csvTransactionsHeader.cells.AddRange(cells);
+		IEnumerable<CsvTransactionsHeaderCell> cells = values
+			.Select((x, i) => new CsvTransactionsHeaderCell
+			{
+				Index = i,
+				Title = x
+			})
+			.Where(x => !string.IsNullOrEmpty(x.Title));
 
-        _ = await csvReader.ReadAsync();
+		csvTransactionsHeader.cells.AddRange(cells);
 
-        return csvTransactionsHeader;
-    }
+		if (csvTransactionsHeader.Cells.Count == 0)
+			warnings.Add("CSV header line does not contain any valid cell.");
+
+		_ = await csvReader.ReadAsync();
+
+		return csvTransactionsHeader;
+	}
 }

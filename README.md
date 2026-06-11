@@ -39,7 +39,7 @@ dotnet add package DustInTheWind.Ing.Toolkit
 
 ### Step 2 - Parse the Exported Document
 
-The `StatemewntDocument` class provides several methods to parse and load a CSV file, to accommodate different input sources. Here it is one of them:
+The `StatemewntDocument` class provides several methods to parse and load a CSV file, to accommodate different input sources. Here is one of them:
 
 **From a file path:**
 
