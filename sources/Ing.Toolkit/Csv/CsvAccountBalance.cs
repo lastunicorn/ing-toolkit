@@ -42,10 +42,11 @@ internal class CsvAccountBalance
 		}
 
 		string firstCell = csvReader.Parser.Record[0];
-		const string expectedLabel = "Sold iniţial:";
+		const string expectedLabel1 = "Sold iniţial:";
+		const string expectedLabel2 = "Sold initial:";
 
-		if (firstCell != expectedLabel)
-			warnings.Add($"Initial account balance row has unexpected label. Expected: '{expectedLabel}'. Actual: '{firstCell}'");
+		if (firstCell != expectedLabel1 && firstCell != expectedLabel2)
+			warnings.Add($"Initial account balance row has unexpected label. Expected: '{expectedLabel1}' OR '{expectedLabel2}'. Actual: '{firstCell}'");
 
 		decimal value = decimal.Parse(csvReader.Parser.Record[3], cultureInfo);
 		await csvReader.ReadAsync();
@@ -70,10 +71,11 @@ internal class CsvAccountBalance
 		}
 
 		string firstCell = csvReader.Parser.Record[0];
-		const string expectedLabel = "Sold final:";
+		const string expectedLabel1 = "Sold final:";
+		const string expectedLabel2 = "Sold final ";
 
-		if (firstCell != expectedLabel)
-			warnings.Add($"Final account balance row has unexpected label. Expected: '{expectedLabel}'. Actual: '{firstCell}'");
+		if (firstCell != expectedLabel1 && firstCell != expectedLabel2)
+			warnings.Add($"Final account balance row has unexpected label. Expected: '{expectedLabel1}' OR '{expectedLabel2}'. Actual: '{firstCell}'");
 
 		decimal value = decimal.Parse(csvReader.Parser.Record[3], cultureInfo);
 		await csvReader.ReadAsync();

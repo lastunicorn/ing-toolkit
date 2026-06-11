@@ -30,7 +30,7 @@ internal class CsvStatementDocument : IDisposable
 		if (textReader == null) throw new ArgumentNullException(nameof(textReader));
 
 		this.cultureInfo = cultureInfo ?? DefaultCultureInfo;
-		
+
 		CsvConfiguration csvConfiguration = new(CultureInfo.InvariantCulture)
 		{
 			HasHeaderRecord = false,
@@ -49,7 +49,7 @@ internal class CsvStatementDocument : IDisposable
 		if (!await csvReader.ReadAsync())
 			throw new DocumentLoadException("CSV file has no data.");
 
-		State = CsvDocumentReadState.PageHeader;
+		State = DetectNextState();
 	}
 
 	public async Task<CsvPageHeader> ReadPageHeaderAsync()
@@ -71,7 +71,7 @@ internal class CsvStatementDocument : IDisposable
 		catch (Exception ex)
 		{
 			State = CsvDocumentReadState.Ended;
-			throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
+			throw new DocumentLoadException(ex);
 		}
 	}
 
@@ -96,7 +96,7 @@ internal class CsvStatementDocument : IDisposable
 		catch (Exception ex)
 		{
 			State = CsvDocumentReadState.Ended;
-			throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
+			throw new DocumentLoadException(ex);
 		}
 	}
 
@@ -148,7 +148,7 @@ internal class CsvStatementDocument : IDisposable
 		catch (Exception ex)
 		{
 			State = CsvDocumentReadState.Ended;
-			throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
+			throw new DocumentLoadException(ex);
 		}
 	}
 
@@ -161,9 +161,7 @@ internal class CsvStatementDocument : IDisposable
 		{
 			CsvPageSignatures footer = await CsvPageSignatures.CreateAsync(csvReader);
 
-			State = csvReader.Parser.Record == null
-				? CsvDocumentReadState.Ended
-				: CsvDocumentReadState.PageHeader;
+			State = DetectNextState();
 
 			return footer;
 		}
@@ -175,8 +173,83 @@ internal class CsvStatementDocument : IDisposable
 		catch (Exception ex)
 		{
 			State = CsvDocumentReadState.Ended;
-			throw new DocumentLoadException("Failed to read transactions CSV document.", ex);
+			throw new DocumentLoadException(ex);
 		}
+	}
+
+	private CsvDocumentReadState DetectNextState()
+	{
+		if (csvReader.Parser.Record == null)
+			return CsvDocumentReadState.Ended;
+
+		if (IsDocumentHeader())
+			return CsvDocumentReadState.PageHeader;
+		
+		if (IsTransactionsHeader())
+			return CsvDocumentReadState.TransactionsHeader;
+		
+		if (IsTransaction())
+			return CsvDocumentReadState.Transaction;
+		
+		if(IsAccountBalance())
+			return CsvDocumentReadState.AccountBalance;
+		
+		if(IsPageSignatures())
+			return CsvDocumentReadState.PageSignatures;
+
+		throw new DocumentLoadException("CSV file has an unrecognizable section.");
+	}
+
+	private bool IsDocumentHeader()
+	{
+		string[] currentRow = csvReader.Parser.Record;
+		string firstCell = currentRow[0];
+
+		return firstCell?.StartsWith("Titular cont", StringComparison.OrdinalIgnoreCase) ?? false;
+	}
+
+	private bool IsTransactionsHeader()
+	{
+		string firstCellWithData = csvReader.Parser.Record?
+			.Where(x => !string.IsNullOrEmpty(x))
+			.FirstOrDefault();
+
+		return firstCellWithData?.StartsWith("Data", StringComparison.OrdinalIgnoreCase) ?? false;
+	}
+
+	private bool IsTransaction()
+	{
+		string[] currentRow = csvReader.Parser.Record;
+		string firstCell = currentRow[0];
+
+		try
+		{
+			DateOnly.ParseExact(firstCell, "dd MMMM yyyy", cultureInfo);
+			return true;
+		}
+		catch (Exception)
+		{
+			return false;
+		}
+	}
+
+	private bool IsAccountBalance()
+	{
+		string[] currentRow = csvReader.Parser.Record;
+		string firstCell = currentRow[0];
+
+		return (firstCell?.StartsWith("Sold iniţial", StringComparison.OrdinalIgnoreCase) ?? false) ||
+			   (firstCell?.StartsWith("Sold inițial", StringComparison.OrdinalIgnoreCase) ?? false) ||
+			   (firstCell?.StartsWith("Sold initial", StringComparison.OrdinalIgnoreCase) ?? false);
+	}
+
+	private bool IsPageSignatures()
+	{
+		string firstCellWithData = csvReader.Parser.Record?
+			.Where(x => !string.IsNullOrEmpty(x))
+			.FirstOrDefault();
+
+		return !firstCellWithData?.StartsWith("Data", StringComparison.OrdinalIgnoreCase) ?? false;
 	}
 
 	public void Dispose()

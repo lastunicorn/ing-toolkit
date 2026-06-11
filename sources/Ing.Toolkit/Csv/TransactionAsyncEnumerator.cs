@@ -51,6 +51,11 @@ internal sealed class TransactionAsyncEnumerator : IAsyncEnumerator<BankTransact
 
         if (cellValues == null)
             return false;
+        
+        string firstCell = cellValues[0];
+        
+        if (firstCell.StartsWith("Sold initial") || firstCell.StartsWith("Sold iniţial"))
+			return false; // This is the account balance line, not a transaction record.
 
         for (int cellIndex = 0; cellIndex < cellValues.Length; cellIndex++)
         {
