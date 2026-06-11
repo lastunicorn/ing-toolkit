@@ -14,7 +14,8 @@ namespace DustInTheWind.Ing.Toolkit.Csv;
 /// </remarks>
 internal class CsvStatementDocument : IDisposable
 {
-	private static readonly CultureInfo CultureInfo = new("ro-RO");
+	private static readonly CultureInfo DefaultCultureInfo = new("ro-RO");
+	private readonly CultureInfo cultureInfo;
 
 	private readonly CsvReader csvReader;
 	private IReadOnlyList<CsvTransactionsHeaderCell> headerCells;
@@ -24,10 +25,12 @@ internal class CsvStatementDocument : IDisposable
 
 	public IReadOnlyList<string> Warnings => warnings;
 
-	public CsvStatementDocument(TextReader textReader)
+	public CsvStatementDocument(TextReader textReader, CultureInfo cultureInfo = null)
 	{
 		if (textReader == null) throw new ArgumentNullException(nameof(textReader));
 
+		this.cultureInfo = cultureInfo ?? DefaultCultureInfo;
+		
 		CsvConfiguration csvConfiguration = new(CultureInfo.InvariantCulture)
 		{
 			HasHeaderRecord = false,
@@ -102,7 +105,7 @@ internal class CsvStatementDocument : IDisposable
 		if (State != CsvDocumentReadState.Transaction)
 			throw new InvalidReadStateException(State, CsvDocumentReadState.Transaction);
 
-		await using TransactionAsyncEnumerator enumerator = new(csvReader, headerCells, CultureInfo);
+		await using TransactionAsyncEnumerator enumerator = new(csvReader, headerCells, cultureInfo);
 
 		while (await enumerator.MoveNextAsync())
 			yield return enumerator.Current;
@@ -129,7 +132,7 @@ internal class CsvStatementDocument : IDisposable
 
 		try
 		{
-			CsvAccountBalance accountBalance = await CsvAccountBalance.CreateAsync(csvReader, CultureInfo, warnings);
+			CsvAccountBalance accountBalance = await CsvAccountBalance.CreateAsync(csvReader, cultureInfo, warnings);
 
 			State = csvReader.Parser.Record == null
 				? CsvDocumentReadState.Ended

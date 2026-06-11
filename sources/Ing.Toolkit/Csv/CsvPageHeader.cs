@@ -45,7 +45,7 @@ internal class CsvPageHeader
 
 		if (row.Length == 0)
 		{
-			warnings.Add("Owner name row missing.");
+			warnings.Add("[Page Header] Owner name row missing.");
 			return string.Empty;
 		}
 		
@@ -53,7 +53,7 @@ internal class CsvPageHeader
 
 		if (!row[0].StartsWith(key, StringComparison.OrdinalIgnoreCase))
 		{
-			warnings.Add($"Owner name row must respect pattern: '{key}<name>'");
+			warnings.Add($"[Page Header] Owner name row does not respect pattern: '{key}<name>'");
 			return firstCell;
 		}
 
@@ -66,7 +66,7 @@ internal class CsvPageHeader
 
 		if (row.Length == 0)
 		{
-			warnings.Add("CNP row missing.");
+			warnings.Add("[Page Header] CNP row missing.");
 			return string.Empty;
 		}
 		
@@ -74,7 +74,7 @@ internal class CsvPageHeader
 
 		if (!row[0].StartsWith(key, StringComparison.OrdinalIgnoreCase))
 		{
-			warnings.Add($"CNP row must respect pattern: '{key}<name>'");
+			warnings.Add($"[Page Header] CNP row does not respect pattern: '{key}<name>'");
 			return firstCell;
 		}
 
@@ -84,7 +84,7 @@ internal class CsvPageHeader
 	private static string GetOwnerAddress(string[] row, List<string> warnings)
 	{
 		if (row.Length == 0)
-			warnings.Add("Address row missing.");
+			warnings.Add("[Page Header] Address row is missing.");
 
 		return row[0]
 			.Replace("\r", " ")

@@ -1,6 +1,13 @@
 ING Toolkit
 ================================================================================
 
+
+v1.1.0 (breacking change)
+--------------------------------------------------------------------------------
+[change] The document load functons return a result object containing the document and warnings.
+[new   ] The load functions accept a CultureInfo instance to be used for deserializing data.
+
+
 v1.0.0
 --------------------------------------------------------------------------------
 [new   ] Created StatementDocument to parse csv statement files from ING.  

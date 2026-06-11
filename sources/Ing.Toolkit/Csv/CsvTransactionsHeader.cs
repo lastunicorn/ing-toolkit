@@ -31,7 +31,7 @@ internal class CsvTransactionsHeader
 		csvTransactionsHeader.cells.AddRange(cells);
 
 		if (csvTransactionsHeader.Cells.Count == 0)
-			warnings.Add("CSV header line does not contain any valid cell.");
+			warnings.Add("[Data Header] CSV header line does not contain any valid cell.");
 
 		_ = await csvReader.ReadAsync();
 
