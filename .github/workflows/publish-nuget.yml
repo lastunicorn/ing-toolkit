@@ -8,7 +8,7 @@ on:
     inputs:
       package_version:
         description: "Stable package version (required for manual runs)"
-        required: false
+        required: true
         type: string
 
 permissions:
@@ -25,9 +25,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            8.0.x
-            10.0.x
+          dotnet-version: 8.0.x
 
       - name: Restore (nuget.org only)
         run: dotnet restore ./Ing.Toolkit.slnx --configfile ./nuget.config
@@ -68,6 +66,7 @@ jobs:
       - name: Build
         run: |
           dotnet build ./Ing.Toolkit.slnx -c Release --no-restore \
+            -p:ContinuousIntegrationBuild=true \
             -p:Version="${{ steps.version.outputs.package_version }}" \
             -p:PackageVersion="${{ steps.version.outputs.package_version }}" \
             -p:AssemblyVersion="${{ steps.version.outputs.package_version }}" \
@@ -80,7 +79,9 @@ jobs:
           dotnet pack ./sources/Ing.Toolkit/Ing.Toolkit.csproj \
             -c Release \
             --no-build \
+            --include-symbols \
             -o ./artifacts \
+            -p:SymbolPackageFormat=snupkg \
             -p:Version="${{ steps.version.outputs.package_version }}" \
             -p:PackageVersion="${{ steps.version.outputs.package_version }}" \
             -p:AssemblyVersion="${{ steps.version.outputs.package_version }}" \
@@ -92,7 +93,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nuget-package
-          path: ./artifacts/*.nupkg
+          path: |
+            ./artifacts/*.nupkg
+            ./artifacts/*.snupkg
 
       - name: Validate packed version
         shell: bash
@@ -100,46 +103,15 @@ jobs:
           expected_version="${{ steps.version.outputs.package_version }}"
           ls ./artifacts/*.nupkg | grep -E "\.${expected_version//./\\.}\.nupkg$" >/dev/null
 
-      - name: Validate NuGet API key
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: |
-          if [ -z "$NUGET_API_KEY" ]; then
-            echo "Missing repository secret NUGET_API_KEY."
-            exit 1
-          fi
-          echo "API key length: ${#NUGET_API_KEY} chars"
-          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
-            -X POST \
-            -H "X-NuGet-ApiKey: $NUGET_API_KEY" \
-            -H "Content-Length: 0" \
-            "https://www.nuget.org/api/v2/package/create-verification-key/DustInTheWind.Ing.Toolkit")
-          http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
-          body=$(echo "$response" | grep -v "HTTP_STATUS:")
-          echo "NuGet API key verification status: $http_status"
-          echo "Response body: $body"
-          if [ "$http_status" = "200" ]; then
-            echo "API key is valid."
-          elif [ "$http_status" = "401" ]; then
-            echo "API key is invalid or expired. Please regenerate it on nuget.org and update the NUGET_API_KEY secret."
-            exit 1
-          elif [ "$http_status" = "403" ]; then
-            echo "API key does not have permission to push 'DustInTheWind.Ing.Toolkit'. Check the key's scope on nuget.org."
-            exit 1
-          else
-            echo "Unexpected verification response: $http_status. Aborting."
-            exit 1
-          fi
-
       - name: Push to NuGet.org
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          output=$(dotnet nuget push "./artifacts/*.nupkg" \
+          dotnet nuget push "./artifacts/*.nupkg" \
             --api-key "$NUGET_API_KEY" \
             --source "https://api.nuget.org/v3/index.json" \
-            --skip-duplicate 2>&1) || true
-          echo "$output"
-          if echo "$output" | grep -qiE "error|failed" && ! echo "$output" | grep -qi "already exists"; then
-            exit 1
-          fi
+            --skip-duplicate
+          dotnet nuget push "./artifacts/*.snupkg" \
+            --api-key "$NUGET_API_KEY" \
+            --source "https://api.nuget.org/v3/index.json" \
+            --skip-duplicate
