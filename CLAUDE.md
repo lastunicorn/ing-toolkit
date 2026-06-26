@@ -29,7 +29,7 @@ There are no automated tests in this repository currently.
 ### Projects
 
 - **`sources/Ing.Toolkit/`** — the library; targets `net8.0`; published as `DustInTheWind.Ing.Toolkit` on NuGet. Assembly name and root namespace are derived from `Directory.Build.props` using `DustInTheWind.$(MSBuildProjectName)`.
-- **`sources/Ing.Toolkit.Demo/`** — console app that loads `statement.csv` and prints transactions as a table using `ConsoleTools.Controls.Tables`.
+- **`sources/Ing.Toolkit.Demo/`** — console app that loads `statement.csv` and prints transactions as a table using `ConsoleTools.Controls.Tables`. The sample `statement.csv` lives in `sources/Ing.Toolkit.Demo/` and is copied to the build output directory by MSBuild automatically — `dotnet run` works without manual setup.
 
 ### Parsing pipeline (`Ing.Toolkit/Csv/`)
 
@@ -52,6 +52,15 @@ New → PageHeader → TransactionsHeader → Transaction → AccountBalance →
 - Transaction details can span multiple CSV rows; continuation rows have an empty first cell and no page-footer marker.
 - The transactions header row has cells shifted one column right relative to the data rows; `CsvTransactionsHeader` handles this offset.
 - `DocumentLoadResult` wraps the `StatementDocument` plus a `Warnings` list for non-fatal parse issues. It has an implicit cast to `StatementDocument` for convenience.
+
+### Public exception types
+
+All exceptions inherit from `DocumentLoadException`. The full hierarchy exposed by the library:
+- `DocumentLoadException` — base; wraps unexpected errors or signals malformed CSV; callers should always catch this.
+- `DataHeaderMissingException` — no transactions-header row found.
+- `InvalidCsvRecordException` — a record could not be parsed.
+- `InvalidCsvRecordLengthException` — a record has the wrong number of fields.
+- `InvalidReadStateException` — `CsvStatementDocument` called in the wrong sequence (internal; surfaces if the state machine is misused).
 
 ### Publishing
 
