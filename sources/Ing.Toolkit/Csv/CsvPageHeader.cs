@@ -48,7 +48,7 @@ internal class CsvPageHeader
 			warnings.Add("[Page Header] Owner name row missing.");
 			return string.Empty;
 		}
-		
+
 		string firstCell = row[0];
 
 		if (!row[0].StartsWith(key, StringComparison.OrdinalIgnoreCase))
@@ -69,7 +69,7 @@ internal class CsvPageHeader
 			warnings.Add("[Page Header] CNP row missing.");
 			return string.Empty;
 		}
-		
+
 		string firstCell = row[0];
 
 		if (!row[0].StartsWith(key, StringComparison.OrdinalIgnoreCase))

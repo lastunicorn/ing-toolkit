@@ -184,17 +184,17 @@ internal class CsvStatementDocument : IDisposable
 
 		if (IsDocumentHeader())
 			return CsvDocumentReadState.PageHeader;
-		
+
 		if (IsTransactionsHeader())
 			return CsvDocumentReadState.TransactionsHeader;
-		
+
 		if (IsTransaction())
 			return CsvDocumentReadState.Transaction;
-		
-		if(IsAccountBalance())
+
+		if (IsAccountBalance())
 			return CsvDocumentReadState.AccountBalance;
-		
-		if(IsPageSignatures())
+
+		if (IsPageSignatures())
 			return CsvDocumentReadState.PageSignatures;
 
 		throw new DocumentLoadException("CSV file has an unrecognizable section.");
@@ -239,8 +239,8 @@ internal class CsvStatementDocument : IDisposable
 		string firstCell = currentRow[0];
 
 		return (firstCell?.StartsWith("Sold iniţial", StringComparison.OrdinalIgnoreCase) ?? false) ||
-			   (firstCell?.StartsWith("Sold inițial", StringComparison.OrdinalIgnoreCase) ?? false) ||
-			   (firstCell?.StartsWith("Sold initial", StringComparison.OrdinalIgnoreCase) ?? false);
+			(firstCell?.StartsWith("Sold inițial", StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(firstCell?.StartsWith("Sold initial", StringComparison.OrdinalIgnoreCase) ?? false);
 	}
 
 	private bool IsPageSignatures()

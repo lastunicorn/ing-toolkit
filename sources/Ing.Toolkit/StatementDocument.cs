@@ -154,7 +154,7 @@ public class StatementDocument : Collection<BankTransaction>
 						throw new DocumentLoadException($"Invalid read state value: {csvStatementDocument.State}");
 				}
 			}
- 
+
 			return new DocumentLoadResult
 			{
 				Document = statementDocument,
